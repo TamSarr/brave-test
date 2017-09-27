@@ -350,6 +350,23 @@ $document.ready(function () {
       });
     }
 
+    if (c.attr('data-custom-nav')) {
+      c.on("initialized.owl.carousel", function (event) {
+        var carousel = $(event.currentTarget),
+          customNav = carousel.parent().find('.owl-carousel-widget-nav');
+
+        // Custom Navigation Events
+        customNav.find(".slick-next").click(function (e) {
+          e.preventDefault();
+          carousel.trigger('next.owl.carousel');
+        });
+        customNav.find(".slick-prev").click(function (e) {
+          e.preventDefault();
+          carousel.trigger('prev.owl.carousel');
+        });
+      });
+    }
+
     c.owlCarousel({
       autoplay: c.attr("data-autoplay") === "true",
       loop: isNoviBuilder ? false : c.attr('data-loop') == 'true',
@@ -1318,7 +1335,7 @@ $document.ready(function () {
     var i;
     for (i = 0; i < plugins.twitterfeed.length; i++) {
       var twitterfeedItem = plugins.twitterfeed[i];
-      $(twitterfeedItem).RDTwitter({});
+      $(twitterfeedItem).RDTwitter();
     }
   }
 
@@ -1330,7 +1347,25 @@ $document.ready(function () {
     var i;
     for (i = 0; i < plugins.facebookfeed.length; i++) {
       var facebookfeedItem = plugins.facebookfeed[i];
-      $(facebookfeedItem).RDFacebookFeed({});
+      $(facebookfeedItem).RDFacebookFeed({
+        accessToken: '402518649933453|EvW-aO2Fmq3JWev0DS6okm3bPo0',
+        callbacks: {
+          postsLoaded: function () {
+            $('.post').each(function () {
+              var $this = $(this);
+              var comment = $this.find('.post_comments');
+              comment.find('[data-fb-comment]').each(function () {
+                if (this.innerHTML.trim().length == 0){
+                  $(this).remove();
+                }
+              });
+              if (comment.find('[data-fb-comment]').length == 0){
+                comment.remove();
+              }
+            })
+          }
+        }
+      });
     }
   }
 
@@ -1514,7 +1549,7 @@ $document.ready(function () {
 
   /**
    * RD Mailform
-   * @version      3.0.0
+   * @version      3.2.0
    */
   if (plugins.rdMailForm.length) {
     var i, j, k,
@@ -1522,11 +1557,11 @@ $document.ready(function () {
         'MF000': 'Successfully sent!',
         'MF001': 'Recipients are not set!',
         'MF002': 'Form will not work locally!',
-        'MF003': 'Please, define type of your form!',
+        'MF003': 'Please, define email field in your form!',
+        'MF004': 'Please, define type of your form!',
         'MF254': 'Something went wrong with PHPMailer!',
         'MF255': 'Aw, snap! Something went wrong.'
-      },
-      recipients = 'test@demolink.com';
+      };
 
     for (i = 0; i < plugins.rdMailForm.length; i++) {
       var $form = $(plugins.rdMailForm[i]),
@@ -1535,7 +1570,6 @@ $document.ready(function () {
       $form.attr('novalidate', 'novalidate').ajaxForm({
         data: {
           "form-type": $form.attr("data-form-type") || "contact",
-          "recipients": recipients,
           "counter": i
         },
         beforeSubmit: function (arr, $form, options) {
@@ -1553,12 +1587,12 @@ $document.ready(function () {
           if (isValidated(inputs, captcha)) {
 
             // veify reCaptcha
-            if (captcha.length) {
+            if(captcha.length) {
               var captchaToken = captcha.find('.g-recaptcha-response').val(),
                 captchaMsg = {
                   'CPT001': 'Please, setup you "site key" and "secret key" of reCaptcha',
                   'CPT002': 'Something wrong with google reCaptcha'
-                }
+                };
 
               formHasCaptcha = true;
 
@@ -1569,7 +1603,7 @@ $document.ready(function () {
                 async: false
               })
                 .done(function (responceCode) {
-                  if (responceCode != 'CPT000') {
+                  if (responceCode !== 'CPT000') {
                     if (output.hasClass("snackbars")) {
                       output.html('<p><span class="icon text-middle mdi mdi-check icon-xxs"></span><span>' + captchaMsg[responceCode] + '</span></p>')
 
@@ -1587,7 +1621,7 @@ $document.ready(function () {
                 });
             }
 
-            if (!captchaFlag) {
+            if(!captchaFlag) {
               return false;
             }
 
@@ -1611,7 +1645,7 @@ $document.ready(function () {
           output.text(msg[result]);
           form.removeClass('form-in-process');
 
-          if (formHasCaptcha) {
+          if(formHasCaptcha) {
             grecaptcha.reset();
           }
         },
@@ -1620,13 +1654,14 @@ $document.ready(function () {
             return;
 
           var form = $(plugins.rdMailForm[this.extraData.counter]),
-            output = $("#" + form.attr("data-form-output"));
+            output = $("#" + form.attr("data-form-output")),
+            select = form.find('select');
 
           form
             .addClass('success')
             .removeClass('form-in-process');
 
-          if (formHasCaptcha) {
+          if(formHasCaptcha) {
             grecaptcha.reset();
           }
 
@@ -1648,7 +1683,12 @@ $document.ready(function () {
           }
 
           form.clearForm();
-          form.find('input, textarea').blur();
+
+          if (select.length){
+            select.select2("val", "");
+          }
+
+          form.find('input, textarea').trigger('blur');
 
           setTimeout(function () {
             output.removeClass("active error success");
@@ -2802,5 +2842,41 @@ $document.ready(function () {
    */
   if (isDesktop && !isNoviBuilder && $html.hasClass("wow-animation") && $(".wow").length) {
     new WOW().init();
+  }
+
+  /**
+   * @module       Magnific Popup
+   * @author       Dmitry Semenov
+   * @see          http://dimsemenov.com/plugins/magnific-popup/
+   * @version      v1.0.0
+   */
+  if (!isNoviBuilder && (plugins.mfp.length > 0 || plugins.mfpGallery.length > 0)) {  
+    if (plugins.mfp.length) {
+      for (i = 0; i < plugins.mfp.length; i++) { 
+        var mfpItem = plugins.mfp[i];
+
+        $(mfpItem).magnificPopup({
+          type: mfpItem.getAttribute("data-lightbox")
+        });
+      }
+    }
+    if (plugins.mfpGallery.length) {
+      for (i = 0; i < plugins.mfpGallery.length; i++) {
+        var mfpGalleryItem = $(plugins.mfpGallery[i]).find('[data-lightbox]');
+
+        for (var c = 0; c < mfpGalleryItem.length; c++) {
+          $(mfpGalleryItem).addClass("mfp-" + $(mfpGalleryItem).attr("data-lightbox"));
+        }
+
+        mfpGalleryItem.end()
+          .magnificPopup({
+            delegate: '[data-lightbox]',
+            type: "image",
+            gallery: {
+              enabled: true
+            }
+          });
+      }
+    }
   }
 });
